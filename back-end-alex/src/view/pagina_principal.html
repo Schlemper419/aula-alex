@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sei la</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: "Inter", sans-serif;
+    }
+    .card {
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    h2 {
+      margin-top: 40px;
+      font-weight: 600;
+    }
+    .btn-sm {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body class="container py-4">
+
+  <h1 class="text-center mb-5">🚀 DevHub Dashboard</h1>
+
+  <section id="usuarios">
+    <h2>Usuários</h2>
+    <form id="frmUsuario" class="row g-2 mb-3">
+      <input type="hidden" id="id">
+      <div class="col-md-3">
+        <input type="text" id="nome" placeholder="Nome" class="form-control" required>
+      </div>
+      <div class="col-md-2">
+        <input type="number" id="idade" placeholder="Idade" class="form-control" required>
+      </div>
+      <div class="col-md-3">
+        <input type="email" id="email" placeholder="E-mail" class="form-control" required>
+      </div>
+      <div class="col-md-2">
+        <input type="password" id="senha" placeholder="Senha" class="form-control">
+      </div>
+      <div class="col-md-2 d-grid">
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+
+    <table class="table table-bordered align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th>
+          <th>Nome</th>
+          <th>Idade</th>
+          <th>E-mail</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaUsuarios"></tbody>
+    </table>
+  </section>
+
+  <section id="logs">
+    <h2>Logs</h2>
+    <form id="frmLog" class="row g-2 mb-3">
+      <div class="col-md-3">
+        <input type="text" id="categoria" placeholder="Categoria" class="form-control" required>
+      </div>
+      <div class="col-md-2">
+        <input type="number" id="horas" placeholder="Horas trabalhadas" class="form-control" required>
+      </div>
+      <div class="col-md-2">
+        <input type="number" id="linhas" placeholder="Linhas de código" class="form-control" required>
+      </div>
+      <div class="col-md-2">
+        <input type="number" id="bugs" placeholder="Bugs corrigidos" class="form-control" required>
+      </div>
+      <div class="col-md-3 d-grid">
+        <button type="submit" class="btn btn-success">Cadastrar Log</button>
+      </div>
+    </form>
+
+    <div id="listaLogs"></div>
+  </section>
+
+  <script>
+    const apiUsuarios = "http://localhost:3000/usuarios";
+    const apiLogs = "http://localhost:3000/logs";
+    const apiLikes = "http://localhost:3000/likes";
+    let usuarioSelecionado = null;
+
+
+    async function listarUsuarios() {
+      const res = await fetch(apiUsuarios);
+      const usuarios = await res.json();
+      const tbody = document.getElementById("tabelaUsuarios");
+      tbody.innerHTML = "";
+      usuarios.forEach(u => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${u.id}</td>
+            <td>${u.nome}</td>
+            <td>${u.idade}</td>
+            <td>${u.email}</td>
+            <td>
+              <button class="btn btn-warning btn-sm" onclick="editarUsuario(${u.id}, '${u.nome}', ${u.idade}, '${u.email}')">✏️ Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deletarUsuario(${u.id})">🗑️ Excluir</button>
+              <button class="btn btn-outline-primary btn-sm" onclick="selecionarUsuario(${u.id})">✅ Selecionar</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function deletarUsuario(id) {
+      if (!confirm("Deseja realmente excluir este usuário?")) return;
+      const res = await fetch(`${apiUsuarios}/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        alert("Usuário deletado!");
+        listarUsuarios();
+      } else {
+        alert("Erro ao deletar usuário!");
+      }
+    }
+
+    function editarUsuario(id, nome, idade, email) {
+      document.getElementById("id").value = id;
+      document.getElementById("nome").value = nome;
+      document.getElementById("idade").value = idade;
+      document.getElementById("email").value = email;
+    }
+
+    document.getElementById("frmUsuario").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("id").value;
+      const nome = document.getElementById("nome").value;
+      const idade = document.getElementById("idade").value;
+      const email = document.getElementById("email").value;
+      const senha = document.getElementById("senha").value || null;
+
+      const metodo = id ? "PUT" : "POST";
+      const url = id ? `${apiUsuarios}/${id}` : apiUsuarios;
+
+      const res = await fetch(url, {
+        method: metodo,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, idade, email, senha })
+      });
+
+      if (res.ok) {
+        alert(id ? "Usuário atualizado!" : "Usuário criado!");
+        document.getElementById("frmUsuario").reset();
+        listarUsuarios();
+      } else {
+        alert("Erro ao salvar usuário!");
+      }
+    });
+
+    function selecionarUsuario(id) {
+      usuarioSelecionado = id;
+      alert(`Usuário ID ${id} selecionado para registrar logs e likes.`);
+    }
+
+
+    async function listarLogs() {
+      const res = await fetch(`${apiLogs}?pagina=1&quantidade=20`);
+      const logs = await res.json();
+      const div = document.getElementById("listaLogs");
+      div.innerHTML = "";
+
+      logs.forEach(log => {
+        div.innerHTML += `
+          <div class="card p-3 mb-3">
+            <h5>${log.categoria}</h5>
+            <p>Horas: ${log.horas_trabalhadas} | Linhas: ${log.linhas_codigo} | Bugs: ${log.bugs_corrigidos}</p>
+            <p>❤️ Likes: ${log.likes}</p>
+            <button class="btn btn-outline-danger btn-sm" onclick="curtir(${log.id})">Curtir</button>
+          </div>
+        `;
+      });
+    }
+
+    document.getElementById("frmLog").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!usuarioSelecionado) return alert("Selecione um usuário primeiro!");
+
+      const categoria = document.getElementById("categoria").value;
+      const horas_trabalhadas = document.getElementById("horas").value;
+      const linhas_codigo = document.getElementById("linhas").value;
+      const bugs_corrigidos = document.getElementById("bugs").value;
+
+      const res = await fetch(apiLogs, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoria, horas_trabalhadas, linhas_codigo, bugs_corrigidos,
+          user_id: usuarioSelecionado
+        })
+      });
+
+      if (res.ok) {
+        alert("Log cadastrado com sucesso!");
+        document.getElementById("frmLog").reset();
+        listarLogs();
+      } else {
+        alert("Erro ao cadastrar log!");
+      }
+    });
+
+    async function curtir(log_id) {
+      if (!usuarioSelecionado) return alert("Selecione um usuário primeiro!");
+      const res = await fetch(apiLikes, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ log_id, user_id: usuarioSelecionado })
+      });
+      if (res.ok) listarLogs();
+      else alert("Erro ao curtir!");
+    }
+
+    listarUsuarios();
+    listarLogs();
+  </script>
+</body>
+</html>
